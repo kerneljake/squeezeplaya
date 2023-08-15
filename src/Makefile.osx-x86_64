@@ -28,9 +28,10 @@ export BUILD_TOP=$(BASE_DIR)build/osx
 export PREFIX=${BUILD_TOP}
 
 ARCHFLAGS=-arch $(ARCH)
-export CFLAGS=$(ARCHFLAGS) -I${PREFIX}/include -I${PREFIX}/include/SDL -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk -mmacosx-version-min=10.7
-export CXXFLAGS=$(ARCHFLAGS) -I${PREFIX}/include -I${PREFIX}/include/SDL -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk -mmacosx-version-min=10.7
-export LDFLAGS=$(ARCHFLAGS) -Wl,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk -mmacosx-version-min=10.7 -L${PREFIX}/lib -L/usr/lib
+MACOS_SDK=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+export CFLAGS=$(ARCHFLAGS) -I${PREFIX}/include -I${PREFIX}/include/SDL -isysroot ${MACOS_SDK} -mmacosx-version-min=10.7
+export CXXFLAGS=$(ARCHFLAGS) -I${PREFIX}/include -I${PREFIX}/include/SDL -isysroot ${MACOS_SDK} -mmacosx-version-min=10.7
+export LDFLAGS=$(ARCHFLAGS) -Wl,-syslibroot,${MACOS_SDK} -mmacosx-version-min=10.7 -L${PREFIX}/lib -L/usr/lib
 
 export TOOLPATH=$(shell dirname `which gcc`)
 
