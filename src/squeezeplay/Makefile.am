@@ -64,9 +64,9 @@ APP_NAME = SqueezePlay
 BUNDLE_CONTENTS = $(BUNDLE_NAME)/Contents
 PLIST_FILE = $(BUNDLE_CONTENTS)/Info.plist
 
-VERSION_TEXT = $(shell cat ../squeezeplay.version)r$(shell svnversion -n .. | sed -e 's/[MS]//g')
-DEB_VERSION_TEXT = $(shell cat ../squeezeplay.version)~$(shell svnversion -n .. | sed -e 's/[MS]//g')
-TGZ_VERSION_TEXT = $(shell cat ../squeezeplay.version)-$(shell svnversion -n .. | sed -e 's/[MS]//g')
+VERSION_TEXT = $(shell cat ../squeezeplay.version)r$(shell git rev-parse --short HEAD)
+DEB_VERSION_TEXT = $(shell cat ../squeezeplay.version)~$(shell git rev-parse --short HEAD)
+TGZ_VERSION_TEXT = $(shell cat ../squeezeplay.version)-$(shell git rev-parse --short HEAD)
 ICNS_NAME = icon.icns
 DMG_TEMP_DIR = temp-SqueezePlay_image
 DMG_IMAGE_DIR = SqueezePlay_image
