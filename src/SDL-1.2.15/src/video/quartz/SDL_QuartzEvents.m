@@ -23,10 +23,11 @@
 
 #include "SDL_QuartzVideo.h"
 #include "SDL_QuartzWM.h"
+#include "SDL_QuartzKeys.h"
 
 #include <IOKit/IOMessage.h> /* For wake from sleep detection */
 #include <IOKit/pwr_mgt/IOPMLib.h> /* For wake from sleep detection */
-#include "SDL_QuartzKeys.h"
+#include <IOKit/hidsystem/ev_keymap.h> /* For multi-media keys */
 
 /*
  * On Leopard, this is missing from the 64-bit headers
@@ -336,6 +337,11 @@ static void QZ_DoKey (_THIS, int state, NSEvent *event) {
     unsigned int i, numChars;
     SDL_keysym key;
     
+    /* Pass key events to the menu to handle cmd-keys */
+    if ([[NSApp menu] performKeyEquivalent:event]) {
+        return;
+    }
+
     /* 
         A key event can contain multiple characters,
         or no characters at all. In most cases, it
@@ -902,6 +908,70 @@ void QZ_PumpEvents (_THIS)
                     break;
 
                 case NSSystemDefined:
+                    if ([event subtype] == 8) {
+                        /* multi-media key */
+                        int keyCode = (([event data1] & 0xFFFF0000) >> 16);
+                        int keyFlags = ([event data1] & 0x0000FFFF);
+                        int keyDown = (((keyFlags & 0xFF00) >> 8)) == 0xA;
+                        int keyUp   = (((keyFlags & 0xFF00) >> 8)) == 0xB;
+                        int keyRepeat = (keyFlags & 0x1);
+                        static int beenRepeating = 0;
+
+                        SDL_keysym key;
+                        key.sym = 0;
+                        key.mod = KMOD_NONE;
+
+                        switch (keyCode) {
+                            case NX_KEYTYPE_PLAY:
+                                /* play/pause */
+                                if (keyDown) {
+                                    key.sym = SDLK_AudioPlay;
+                                    SDL_PrivateKeyboard(SDL_PRESSED, &key);
+                                    SDL_PrivateKeyboard(SDL_RELEASED, &key);
+                                }
+                                break;
+                            case NX_KEYTYPE_FAST:
+                            case NX_KEYTYPE_NEXT:
+                                /* fast-forward */
+                                if (keyUp && !beenRepeating) {
+                                    /* next track */
+                                    key.sym = SDLK_AudioNext;
+                                    SDL_PrivateKeyboard(SDL_PRESSED, &key);
+                                    SDL_PrivateKeyboard(SDL_RELEASED, &key);
+                                } else if (keyDown && keyRepeat) {
+                                    /* skip forward */
+                                    beenRepeating = 1;
+                                    key.sym = SDLK_Forward;
+                                    SDL_PrivateKeyboard(SDL_PRESSED, &key);
+                                } else if (keyUp && beenRepeating) {
+                                    /* done skipping forward */
+                                    beenRepeating = 0;
+                                    key.sym = SDLK_Forward;
+                                    SDL_PrivateKeyboard(SDL_RELEASED, &key);
+                                }
+                                break;
+                            case NX_KEYTYPE_REWIND:
+                            case NX_KEYTYPE_PREVIOUS:
+                                /* rewind */
+                                if (keyUp && !beenRepeating) {
+                                    /* previous track */
+                                    key.sym = SDLK_AudioPrev;
+                                    SDL_PrivateKeyboard(SDL_PRESSED, &key);
+                                    SDL_PrivateKeyboard(SDL_RELEASED, &key);
+                                } else if (keyDown && keyRepeat) {
+                                    /* skip backward */
+                                    beenRepeating = 1;
+                                    key.sym = SDLK_Back;
+                                    SDL_PrivateKeyboard(SDL_PRESSED, &key);
+                                } else if (keyUp && beenRepeating) {
+                                    /* done skipping backward */
+                                    beenRepeating = 0;
+                                    key.sym = SDLK_Back;
+                                    SDL_PrivateKeyboard(SDL_RELEASED, &key);
+                                }
+                                break;
+                        }
+                    }
                     /*
                         Future: up to 32 "mouse" buttons can be handled.
                         if ([event subtype] == 7) {

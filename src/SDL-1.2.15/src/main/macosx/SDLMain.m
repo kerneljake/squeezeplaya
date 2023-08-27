@@ -268,9 +268,6 @@ static void CustomApplicationMain (int argc, char **argv)
     [self fixMenu:[NSApp mainMenu] withAppName:getApplicationName()];
 #endif
 
-    /* enable Command-H and Command-Q to hide and quit, respectively */
-    setenv("SDL_ENABLEAPPEVENTS", "1", 1);
-
     /* Hand off to main application code */
     gCalledAppMainline = TRUE;
     status = SDL_main (gArgc, gArgv);
