@@ -13,9 +13,7 @@
 #include <net/if_dl.h>
 #include <ifaddrs.h>
 #include <net/if_types.h>
-#include <SDL_syswm.h>
 #include <SDL_keysym.h>
-#include <IOKit/hidsystem/ev_keymap.h> /* For multi-media keys */
 
 #define PREF_DIR "/Library/Preferences/SqueezePlay"
 
