@@ -269,7 +269,9 @@ static void CustomApplicationMain (int argc, char **argv)
 
     /* intercept multimedia keys */
     _mediaKeyController = [[SPMediaKeyTap alloc] initWithDelegate:self];
-    [_mediaKeyController startWatchingMediaKeys];
+    if (![_mediaKeyController startWatchingMediaKeys]) {
+        printf("startWatchingMediaKeys returned FALSE, you may need to allow this app in Privacy & Security -> Accessibility\n");
+    }
 
 #if SDL_USE_NIB_FILE
     /* Set the main menu to contain the real app name instead of "SDL App" */

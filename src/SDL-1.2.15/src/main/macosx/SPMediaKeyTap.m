@@ -387,51 +387,51 @@ static CGEventRef tapEventCallback(CGEventTapProxy proxy, CGEventType type, CGEv
 
         switch (keyCode) {
         case NX_KEYTYPE_PLAY:
-	    /* play/pause */
-	    if (keyDown) {
-		sdl_event.key.keysym.sym = SDLK_AudioPlay;
-	    }
-	    break;
+            /* play/pause */
+            if (keyDown) {
+                sdl_event.key.keysym.sym = SDLK_AudioPlay;
+            }
+            break;
 
         case NX_KEYTYPE_FAST:
         case NX_KEYTYPE_NEXT:
-	    /* fast-forward */
-	    if (keyUp && !beenRepeating) {
-		/* next track */
-		sdl_event.key.keysym.sym = SDLK_AudioNext;
-	    } else if (keyDown && keyRepeat) {
-		/* skip forward */
-		beenRepeating = 1;
-		sdl_event.key.keysym.sym = SDLK_Forward;
-	    } else if (keyUp && beenRepeating) {
-		/* done skipping forward */
-		beenRepeating = 0;
-	    }
-	    break;
+            /* fast-forward */
+            if (keyUp && !beenRepeating) {
+                /* next track */
+                sdl_event.key.keysym.sym = SDLK_AudioNext;
+            } else if (keyDown && keyRepeat) {
+                /* skip forward */
+                beenRepeating = 1;
+                sdl_event.key.keysym.sym = SDLK_Forward;
+            } else if (keyUp && beenRepeating) {
+                /* done skipping forward */
+                beenRepeating = 0;
+            }
+            break;
 
         case NX_KEYTYPE_REWIND:
         case NX_KEYTYPE_PREVIOUS:
-	    /* rewind */
-	    if (keyUp && !beenRepeating) {
-		/* previous track */
-		sdl_event.key.keysym.sym = SDLK_AudioPrev;
-	    } else if (keyDown && keyRepeat) {
-		/* skip backward */
-		beenRepeating = 1;
-		sdl_event.key.keysym.sym = SDLK_Back;
-	    } else if (keyUp && beenRepeating) {
-		/* done skipping backward */
-		beenRepeating = 0;
-	    }
-	    break;
+            /* rewind */
+            if (keyUp && !beenRepeating) {
+                /* previous track */
+                sdl_event.key.keysym.sym = SDLK_AudioPrev;
+            } else if (keyDown && keyRepeat) {
+                /* skip backward */
+                beenRepeating = 1;
+                sdl_event.key.keysym.sym = SDLK_Back;
+            } else if (keyUp && beenRepeating) {
+                /* done skipping backward */
+                beenRepeating = 0;
+            }
+            break;
 
         } /*switch*/
 
         if ((event_filter=SDL_GetEventFilter()) && sdl_event.key.keysym.sym) {
-	    /* pump the event through macosx_filter_pump()
-	     * since SDL_PushEvent() does not perform filtering in SDL 1.2
-	     */
-	    event_filter(&sdl_event);
+            /* pump the event through macosx_filter_pump()
+             * since SDL_PushEvent() does not perform filtering in SDL 1.2
+             */
+            event_filter(&sdl_event);
         }
 
     } /*if*/
