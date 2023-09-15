@@ -23,10 +23,10 @@
 
 #include "SDL_QuartzVideo.h"
 #include "SDL_QuartzWM.h"
-#include "SDL_QuartzKeys.h"
 
 #include <IOKit/IOMessage.h> /* For wake from sleep detection */
 #include <IOKit/pwr_mgt/IOPMLib.h> /* For wake from sleep detection */
+#include "SDL_QuartzKeys.h"
 
 /*
  * On Leopard, this is missing from the 64-bit headers
