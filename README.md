@@ -22,9 +22,9 @@ I'm happy to fold this back upstream when it is sufficiently stable.
 - [x] ⌘-H and ⌘-Q hide and quit, respectively
 - [x] multimedia key support (next/prev/play/pause) in conjunction with [noTunes](https://github.com/tombonez/noTunes)
 - [x] multimedia key support (next/prev/play/pause) without requiring [noTunes](https://github.com/tombonez/noTunes)
-- [ ] handle runtime changes in default output device like unplugging headphone jack, changing Sound Output, etc.
-- [ ] don't clobber VLC's output device on startup
+- [x] handle runtime changes in default output device like unplugging headphone jack, changing Sound Output, etc.
 - [ ] handle high VBR FLAC files
+- [ ] don't clobber VLC's output device on startup
 - [ ] tray icon menu items for controlling playback
 - [ ] double click NowPlaying applet to rotate skin instead of single click
 - [ ] move volume slider quickly by clicking in the grey empty space area
