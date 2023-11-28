@@ -31,7 +31,7 @@
     it doesn't seem to matter what value it has.
 */
 static void QZ_SetPortAlphaOpaque () {
-    
+    return; // UNUSED if using main thread - joa 
     SDL_Surface *surface = current_video->screen;
     int bpp;
     
@@ -152,6 +152,15 @@ static void QZ_SetPortAlphaOpaque () {
 	}
 }
 
+#if 0
+// joa
+- (void)windowDidExpose:(NSNotification *)aNotification
+{
+	NSLog(@"windowDidExpose called!!! in  %@", [NSThread currentThread]);
+    //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_EXPOSED, 0, 0);
+}
+#endif
+
 - (void)appDidHide:(NSNotification*)note
 {
     SDL_PrivateAppActive (0, SDL_APPACTIVE);
@@ -194,6 +203,11 @@ static void QZ_SetPortAlphaOpaque () {
     [ [ NSNotificationCenter defaultCenter ] addObserver:self
         selector:@selector(appWillUnhide:) name:NSApplicationWillUnhideNotification object:NSApp ];
         
+	// joa
+    [ [ NSNotificationCenter defaultCenter ] addObserver:self
+        selector:@selector(windowDidExpose:) name:NSWindowDidExposeNotification object:NSApp ];
+        
+	//NSLog(@"initWithContentRect is thread %@", [NSThread currentThread]);
     return [ super initWithContentRect:contentRect styleMask:styleMask backing:backingType defer:flag ];
 }
 
@@ -208,6 +222,7 @@ static void QZ_SetPortAlphaOpaque () {
 
 - (void)windowDidBecomeKey:(NSNotification *)aNotification
 {
+	NSLog(@"windowDidBecomeKey called\n");
     QZ_DoActivate (current_video);
 }
 

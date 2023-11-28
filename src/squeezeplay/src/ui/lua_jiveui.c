@@ -730,6 +730,7 @@ static int tolua_jive_jive_ui_Surface_getSize00(lua_State* tolua_S)
  if (!self) tolua_error(tolua_S,"invalid 'self' in function 'jive_surface_get_size'",NULL);
 #endif
  {
+  printf("lua_jiveui.c: calling jive_surface_get_size\n"); //joa
   jive_surface_get_size(self,&w,&h);
  tolua_pushinteger(tolua_S,(lua_Integer)w);
  tolua_pushinteger(tolua_S,(lua_Integer)h);

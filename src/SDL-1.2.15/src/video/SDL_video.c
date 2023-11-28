@@ -1013,6 +1013,7 @@ SDL_Surface *SDL_DisplayFormatAlpha(SDL_Surface *surface)
  */
 void SDL_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Uint32 w, Uint32 h)
 {
+	printf("SDL_UpdateRect: entered\n");
 	if ( screen ) {
 		SDL_Rect rect;
 
@@ -1040,11 +1041,13 @@ void SDL_UpdateRects (SDL_Surface *screen, int numrects, SDL_Rect *rects)
 	SDL_VideoDevice *video = current_video;
 	SDL_VideoDevice *this = current_video;
 
+	printf("SDL_UpdateRects: entered with numrects = %d\n", numrects);
 	if ( (screen->flags & (SDL_OPENGL | SDL_OPENGLBLIT)) == SDL_OPENGL ) {
 		SDL_SetError("OpenGL active, use SDL_GL_SwapBuffers()");
 		return;
 	}
 	if ( screen == SDL_ShadowSurface ) {
+		printf("SDL_UpdateRects: screen == SDL_ShadowSurface\n");
 		/* Blit the shadow surface using saved mapping */
 		SDL_Palette *pal = screen->format->palette;
 		SDL_Color *saved_colors = NULL;
@@ -1082,8 +1085,10 @@ void SDL_UpdateRects (SDL_Surface *screen, int numrects, SDL_Rect *rects)
 		screen = SDL_VideoSurface;
 	}
 	if ( screen == SDL_VideoSurface ) {
+		printf("SDL_UpdateRects: screen == SDL_VideoSurface\n");
 		/* Update the video surface */
 		if ( screen->offset ) {
+			printf("SDL_UpdateRects: screen->offset = %d\n", screen->offset);
 			for ( i=0; i<numrects; ++i ) {
 				rects[i].x += video->offset_x;
 				rects[i].y += video->offset_y;
@@ -1094,6 +1099,7 @@ void SDL_UpdateRects (SDL_Surface *screen, int numrects, SDL_Rect *rects)
 				rects[i].y -= video->offset_y;
 			}
 		} else {
+			printf("SDL_UpdateRects: no screen->offset\n");
 			video->UpdateRects(this, numrects, rects);
 		}
 	}
@@ -1145,9 +1151,11 @@ int SDL_Flip(SDL_Surface *screen)
 		screen = SDL_VideoSurface;
 	}
 	if ( (screen->flags & SDL_DOUBLEBUF) == SDL_DOUBLEBUF ) {
+		printf("SDL_Flip: double buffering available");
 		SDL_VideoDevice *this  = current_video;
 		return(video->FlipHWSurface(this, SDL_VideoSurface));
 	} else {
+		printf("SDL_Flip: double buffering unavailable, calling SDL_UpdateRect\n");
 		SDL_UpdateRect(screen, 0, 0, 0, 0);
 	}
 	return(0);

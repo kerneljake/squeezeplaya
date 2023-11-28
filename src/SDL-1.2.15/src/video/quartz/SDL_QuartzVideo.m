@@ -688,6 +688,8 @@ static SDL_Surface* QZ_SetVideoFullScreen (_THIS, SDL_Surface *current, int widt
     NSRect contentRect;
     CGDisplayFadeReservationToken fade_token = kCGDisplayFadeReservationInvalidToken;
 
+	NSLog(@"QZ_SetVideoFullScreen SHOULD NOT HAPPEN! thread is %@", [NSThread currentThread]);
+
     current->flags = SDL_FULLSCREEN;
     current->w = width;
     current->h = height;
@@ -801,7 +803,7 @@ static SDL_Surface* QZ_SetVideoFullScreen (_THIS, SDL_Surface *current, int widt
                     backing:NSBackingStoreBuffered
                         defer:NO ];
 
-        if (qz_window != nil) {
+		if (qz_window != nil) {  // joa: THIS IS FULLSCREEN... UNUSED
             [ qz_window setAcceptsMouseMovedEvents:YES ];
             [ qz_window setViewsNeedDisplay:NO ];
             if (isLion) {
@@ -940,6 +942,8 @@ static SDL_Surface* QZ_SetVideoFullScreen (_THIS, SDL_Surface *current, int widt
     /* Set app state, hide cursor if necessary, ... */
     QZ_DoActivate(this);
 
+	NSLog(@"QZ_SetVideoFullScreen thread is %@", [NSThread currentThread]);
+	printf("QZ_SetVideoFullScreen: redrawing with dispatch_async SHOULD NOT HAPPEN!\n");
 	dispatch_async(dispatch_get_main_queue(), ^(void){ [ window_view setNeedsDisplay:YES ]; [ [ qz_window contentView ] setNeedsDisplay:YES ]; [ qz_window displayIfNeeded ]; });
     
     return current;
@@ -969,7 +973,9 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
     current->flags = 0;
     current->w = width;
     current->h = height;
-    
+
+	NSLog(@"QZ_SetVideoWindowed thread is %@", [NSThread currentThread]); // joa
+	printf("QZ_SetVideoWindowed: making rectangle %d x %d\n", width, height); //joa
     contentRect = NSMakeRect (0, 0, width, height);
 
     /*
@@ -980,17 +986,22 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
         - If new mode is OpenGL, but previous mode wasn't
     */
     if (video_set == SDL_TRUE) {
+		printf("QZ_SetVideoWindowed: video_set == SDL_TRUE\n"); // joa
         if (mode_flags & SDL_FULLSCREEN) {
+			printf("QZ_SetVideoWindowed: mode_flags & SDL_FULLSCREEN - should not happen\n"); // joa
             /* Fade to black to hide resolution-switching flicker (and garbage
                that is displayed by a destroyed OpenGL context, if applicable) */
             if (CGAcquireDisplayFadeReservation (5, &fade_token) == kCGErrorSuccess) {
+				printf("QZ_SetVideoWindowed: fade to black\n"); // joa
                 CGDisplayFade (fade_token, 0.3, kCGDisplayBlendNormal, kCGDisplayBlendSolidColor, 0.0, 0.0, 0.0, TRUE);
             }
+			printf("QZ_SetVideoWindowed: calling QZ_UnsetVideoMode\n"); // joa
             QZ_UnsetVideoMode (this, TRUE, save_gl);
         }
         else if ( ((mode_flags ^ flags) & (SDL_NOFRAME|SDL_RESIZABLE)) ||
                   (mode_flags & SDL_OPENGL) || 
                   (flags & SDL_OPENGL) ) {
+			printf("QZ_SetVideoWindowed: calling QZ_UnsetVideoMode\n"); // joa
             QZ_UnsetVideoMode (this, TRUE, save_gl);
         }
     }
@@ -1007,7 +1018,7 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
 
     /* Check if we should recreate the window */
     if (qz_window == nil) {
-    
+   		printf("QZ_SetVideoWindowed: qz_window == nil, recreating window\n"); //joa 
         /* Set the window style based on input flags */
         if ( flags & SDL_NOFRAME ) {
             style = NSBorderlessWindowMask;
@@ -1021,7 +1032,8 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
             }
         }
 
-        /* Manually create a window, avoids having a nib file resource */
+        /* Manually create a window, avoids having a nib file resource */ // ======= joa HERE ============
+		printf("QZ_SetVideoWindowed: Manually create a window\n");
         qz_window = [ [ SDL_QuartzWindow alloc ] 
             initWithContentRect:contentRect
                 styleMask:style 
@@ -1052,10 +1064,12 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
 
         [ qz_window setDelegate:
             [ [ SDL_QuartzWindowDelegate alloc ] init ] ];
+		printf("QZ_SetVideoWindowed: setContentView\n");
         [ qz_window setContentView: [ [ [ SDL_QuartzView alloc ] init ] autorelease ] ];
     }
     /* We already have a window, just change its size */
     else {
+		printf("QZ_SetVideoWindowed: already have a window\n");
         [ qz_window setContentSize:contentRect.size ];
         current->flags |= (SDL_NOFRAME|SDL_RESIZABLE) & mode_flags;
         [ window_view setFrameSize:contentRect.size ];
@@ -1063,7 +1077,7 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
 
     /* For OpenGL, we bind the context to a subview */
     if ( flags & SDL_OPENGL ) {
-
+		printf("QZ_SetVideoWindowed: OPENGL - should not happen!\n");
         if ( ! save_gl ) {
             if ( ! QZ_SetupOpenGL (this, *bpp, flags) ) {
                 if (fade_token != kCGDisplayFadeReservationInvalidToken) {
@@ -1089,7 +1103,7 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
 
         /* Only recreate the view if it doesn't already exist */
         if (window_view == nil) {
-        
+       		printf("QZ_SetVideoWindowed: recreating the view since window_view == nil\n");//joa 
             window_view = [ [ NSView alloc ] initWithFrame:contentRect ];
             [ window_view setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable ];
             [ [ qz_window contentView ] addSubview:window_view ];
@@ -1118,14 +1132,16 @@ static SDL_Surface* QZ_SetVideoWindowed (_THIS, SDL_Surface *current, int width,
     /* Save flags to ensure correct teardown */
     mode_flags = current->flags;
     
+    printf("QZ_SetVideoWindowed: redrawing window with dispatch_async\n");//joa 
 	dispatch_async(dispatch_get_main_queue(), ^(void){ [ window_view setNeedsDisplay:YES ]; [ [ qz_window contentView ] setNeedsDisplay:YES ]; [ qz_window displayIfNeeded ]; });
     
     /* Fade in again (asynchronously) if we came from a fullscreen mode and faded to black */
     if (fade_token != kCGDisplayFadeReservationInvalidToken) {
+		printf("fade_token is non-null\n");
         CGDisplayFade (fade_token, 0.5, kCGDisplayBlendSolidColor, kCGDisplayBlendNormal, 0.0, 0.0, 0.0, FALSE);
         CGReleaseDisplayFadeReservation (fade_token);
     }
-
+	printf("QZ_SetVideoWindowed: return\n");
     return current;
 }
 
@@ -1135,7 +1151,7 @@ static SDL_Surface* QZ_SetVideoModeInternal (_THIS, SDL_Surface *current,
                                              Uint32 flags, BOOL save_gl)
 {
     const BOOL isLion = IS_LION_OR_LATER(this);
-
+	printf("QZ_SetVideoModeInternal: entered\n");
     current->flags = 0;
     current->pixels = NULL;
 
@@ -1152,14 +1168,17 @@ static SDL_Surface* QZ_SetVideoModeInternal (_THIS, SDL_Surface *current,
     else {
         /* Force bpp to 32 */
         bpp = 32;
+		printf("QZ_SetVideoModeInternal: about to call QZ_SetVideoWindowed with forced bpp = 32\n");
         current = QZ_SetVideoWindowed (this, current, width, height, &bpp, flags, save_gl );
         if (current == NULL)
             return NULL;
     }
 
     if (qz_window != nil) {
+		printf("QZ_SetVideoModeInternal: nsgfx_context when qz_window != nil\n");
         nsgfx_context = [NSGraphicsContext graphicsContextWithWindow:qz_window];
         if (nsgfx_context != NULL) {
+			printf("QZ_SetVideoModeInternal: setCurrentContext when nsgfx_context != NULL\n");
         	[NSGraphicsContext setCurrentContext:nsgfx_context];
       	}
       	else {
@@ -1232,6 +1251,7 @@ static SDL_Surface* QZ_SetVideoMode(_THIS, SDL_Surface *current,
     NSOpenGLContext *glctx = gl_context;
     SDL_Surface* retval = NULL;
 
+	printf("QZ_SetVideoMode: entered\n");
     if (save_gl) {
         [glctx retain];  /* just so we don't lose this when killing old views, etc */
     }
@@ -1517,23 +1537,24 @@ void QZ_UpdateRectsOnDrawRect(/*TODO: NSRect from drawRect*/) {
 	SDL_VideoDevice *this = last_this;
 
 	if (this == NULL) return;
-  if (SDL_VideoSurface == NULL) return;
+	if (SDL_VideoSurface == NULL) return;
 
     if (SDL_VideoSurface->flags & SDL_OPENGLBLIT) {
-// TODO
+		// TODO
     }
     else if ( [ qz_window isMiniaturized ] ) {
-    
         /* Do nothing if miniaturized */
     }
-    
     else {
         NSGraphicsContext *ctx = [NSGraphicsContext currentContext];
         /* NTS: nsgfx_context == NULL will occur on Mojave, may be non-NULL on older versions of OS X */
-          if (nsgfx_context != NULL && ctx != nsgfx_context) { /* uhoh, you might be rendering from another thread... */
-                  [NSGraphicsContext setCurrentContext:nsgfx_context];
+        if (nsgfx_context != NULL && ctx != nsgfx_context) { /* uhoh, you might be rendering from another thread... */
+			printf("QZ_UpdateRectsOnDrawRect: uhoh, you might be rendering from another thread\n");
+            [NSGraphicsContext setCurrentContext:nsgfx_context];
             ctx = nsgfx_context;
-        }
+        } else {
+			printf("QZ_UpdateRectsOnDrawRect: cancel that uhoh\n");
+		}
         CGContextRef cgc = (CGContextRef) [ctx graphicsPort];
         QZ_DrawResizeIcon (this);
         CGContextFlush (cg_context);
@@ -1559,7 +1580,9 @@ static void QZ_UpdateRects (_THIS, int numRects, SDL_Rect *rects)
         /* Do nothing if miniaturized */
     }
     else {
-	dispatch_async(dispatch_get_main_queue(), ^(void){ [ window_view setNeedsDisplay:YES ]; [ [ qz_window contentView ] setNeedsDisplay:YES ]; [ qz_window displayIfNeeded ]; });
+		NSLog(@"QZ_UpdateRects thread is %@", [NSThread currentThread]);
+    	printf("QZ_UpdateRects: redrawing window with dispatch_async\n");//joa 
+		dispatch_async(dispatch_get_main_queue(), ^(void){ [ window_view setNeedsDisplay:YES ]; [ [ qz_window contentView ] setNeedsDisplay:YES ]; [ qz_window displayIfNeeded ]; });
     }
 }
 

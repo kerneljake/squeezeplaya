@@ -10,6 +10,7 @@
 #include <sys/param.h> /* for MAXPATHLEN */
 #include <unistd.h>
 #import "SPMediaKeyTap.h"
+#include <dispatch/dispatch.h>
 
 /* For some reaon, Apple removed setAppleMenu from the headers in 10.4,
  but the method still is there and works. To avoid warnings, we declare
@@ -72,17 +73,21 @@ SPMediaKeyTap *_mediaKeyController;
 /* Set the working directory to the .app's parent directory */
 - (void) setupWorkingDirectory:(BOOL)shouldChdir
 {
+	//printf("setupWorkingDirectory entered\n");
     if (shouldChdir)
     {
         char parentdir[MAXPATHLEN];
+		printf("setupWorkingDirectory shouldChdir = TRUE\n");
         CFURLRef url = CFBundleCopyBundleURL(CFBundleGetMainBundle());
         CFURLRef url2 = CFURLCreateCopyDeletingLastPathComponent(0, url);
         if (CFURLGetFileSystemRepresentation(url2, 1, (UInt8 *)parentdir, MAXPATHLEN)) {
+			printf("setupWorkingDirectory chdir to: %s\n", parentdir);
             chdir(parentdir);   /* chdir to the binary app's parent */
         }
         CFRelease(url);
         CFRelease(url2);
     }
+	else { printf("setupWorkingDirectory shouldChdir = FALSE\n"); }
 }
 
 #if SDL_USE_NIB_FILE
@@ -201,7 +206,9 @@ static void CustomApplicationMain (int argc, char **argv)
     [NSApp setDelegate:(id<NSApplicationDelegate>)sdlMain];
     
     /* Start the main event loop */
+	NSLog(@"CustomApplicationMain is thread %@", [NSThread currentThread]);
     [NSApp run];
+    //dispatch_sync(dispatch_get_main_queue(), ^{ [NSApp run]; }); // illegal instruction
     
     [sdlMain release];
     [pool release];
@@ -279,6 +286,7 @@ static void CustomApplicationMain (int argc, char **argv)
 #endif
 
     /* Hand off to main application code */
+	NSLog(@"applicationDidFinishLaunching is thread %@", [NSThread currentThread]);
     gCalledAppMainline = TRUE;
     status = SDL_main (gArgc, gArgv);
 
@@ -357,6 +365,7 @@ int main (int argc, char **argv)
 #if SDL_USE_NIB_FILE
     NSApplicationMain (argc, argv);
 #else
+	NSLog(@"main is thread %@", [NSThread currentThread]);
     CustomApplicationMain (argc, argv);
 #endif
     return 0;

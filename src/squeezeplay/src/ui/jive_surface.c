@@ -95,6 +95,7 @@ static int _new_image(const char *path) {
 			/* should probably be a fatal error */
 			return 0;
 		}
+		memset(images, 0, INITIAL_IMAGES * sizeof(images[0])); // joa
 	}
 
 	// Zero is invaild! so start at one... yes we waste an entry... but there is alot of code that relies on this
@@ -203,23 +204,29 @@ static void _load_image (Uint16 index, bool hasAlphaFlags, Uint32 alphaFlags) {
 	struct image *image = &images[index];
 	SDL_Surface *tmp, *srf;
 
+	printf("_load_image: calling IMG_Load on %s\n", image->path);
 	tmp = IMG_Load(image->path);
 	if (!tmp) {
+		printf("_load_image: Error loading tile image %s\n", image->path);
 		LOG_WARN(log_ui_draw, "Error loading tile image %s: %s\n", image->path, IMG_GetError());
 		return;
 	}
 	if (tmp->format->Amask) {
+		printf("_load_image: setting srf = SDL_DisplayFormatAlpha(tmp)\n");
 		srf = SDL_DisplayFormatAlpha(tmp);
 		image->flags |= IMAGE_FLAG_AMASK;
 	} else {
+		printf("_load_image: setting srf = SDL_DisplayFormat(tmp)\n");
 		srf = SDL_DisplayFormat(tmp);
 	}
 	SDL_FreeSurface(tmp);
 
-	if (!srf)
+	if (!srf) {
+		printf("_load_image: no srf found, returning\n", image->path);
 		return;
-
+	}
 	if (hasAlphaFlags) {
+		printf("_load_image: calling SDL_SetAlpha\n");
 		SDL_SetAlpha(srf, alphaFlags, 0);
 	}
 
@@ -242,6 +249,7 @@ static void _load_image (Uint16 index, bool hasAlphaFlags, Uint32 alphaFlags) {
 #ifdef JIVE_PROFILE_IMAGE_CACHE
 	LOG_DEBUG(log_ui_draw, "Loaded image %3d:%s", index, image->path);
 #endif
+	printf("_load_image: Loaded image %3d:%s\n", index, image->path);
 }
 
 static void _load_tile_images (JiveTile *tile) {
@@ -261,8 +269,10 @@ static void _load_tile_images (JiveTile *tile) {
 		if (!image)
 			continue;
 
-		if (images[image].loaded)
+		if (images[image].loaded) {
+			printf("_load_tile_images: calling _use_image\n");
 			_use_image(image);
+		}
 	}
 
 	for (i = 0; i < max; i++) {
@@ -278,7 +288,7 @@ static void _load_tile_images (JiveTile *tile) {
 				m++;
 			n++;
 #endif
-
+			printf("_load_tile_images: calling _load_image\n");
 			_load_image(image, tile->flags & TILE_FLAG_ALPHA, tile->alpha_flags);
 		}
 	}
@@ -307,6 +317,7 @@ static void _init_image_sizes(struct image *image) {
 		 LOG_DEBUG(log_ui_draw, "Loading image just for sizes: %s", image->path);
 #endif
 
+		printf("_init_image_sizes: calling IMG_Load on tmp %s\n", image->path); // joa bingo
 		tmp = IMG_Load(image->path);
 		if (!tmp) {
 			LOG_WARN(log_ui_draw, "Error loading tile image %s: %s\n", image->path, IMG_GetError());
@@ -410,20 +421,28 @@ static void _get_tile_surfaces(JiveTile *tile, SDL_Surface *srf[9], bool load) {
 
 static SDL_Surface *get_image_surface(JiveTile *tile) {
 	if (!IS_DYNAMIC_IMAGE(tile)) {
+		printf("get_image_surface: no SDL surface available, returning NULL\n");
 		LOG_ERROR(log_ui_draw, "no SDL surface available");
 		return NULL;
 	}
 
+	printf("get_image_surface: calling _load_tile_images\n");
 	_load_tile_images(tile);
-	if (!images[tile->image[0]].loaded)
+	if (!images[tile->image[0]].loaded) {
+		printf("get_image_surface: returning NULL\n");
 		return NULL;
-
-	return images[tile->image[0]].loaded->srf;
+	} else {
+		printf("get_image_surface: returning non-NULL srf\n");
+		return images[tile->image[0]].loaded->srf;
+	}
 }
 
 static inline SDL_Surface * _resolve_SDL_surface(JiveSurface *srf) {
-	if (srf->sdl)
+	if (srf->sdl) {
+		printf("_resolve_SDL_surface: returning srf->sdl as non-NULL\n");
 		return srf->sdl;
+	}
+	printf("_resolve_SDL_surface: about to call get_image_surface\n");
 	return get_image_surface(srf);
 }
 
@@ -455,6 +474,7 @@ JiveTile *jive_tile_load_image(const char *path) {
 		free(fullpath);
 		return NULL;
 	}
+	//printf("jive_tile_load_image found image: %s\n", path);  // joa
 
 	image = _new_image(fullpath);
 	free(fullpath);
@@ -844,6 +864,7 @@ JiveSurface *jive_surface_set_video_mode(Uint16 w, Uint16 h, Uint16 bpp, bool fu
 	const SDL_VideoInfo *video_info;
 	Uint32 flags;
 
+	printf("jive_surface_set_video_mode: entered with bpp = %d\n", bpp);
 #ifdef SCREEN_ROTATION_ENABLED
 	{
 		Uint16 tmp;
@@ -855,7 +876,7 @@ JiveSurface *jive_surface_set_video_mode(Uint16 w, Uint16 h, Uint16 bpp, bool fu
 #endif
 
         
-        video_info = SDL_GetVideoInfo();
+	video_info = SDL_GetVideoInfo();
 	LOG_INFO(log_ui_draw, "Window Manager %s available", video_info->wm_available?"is":"is not");
 	LOG_INFO(log_ui_draw, "Video Setup for %sfullscreen", fullscreen?"":"non-");
 
@@ -867,7 +888,7 @@ JiveSurface *jive_surface_set_video_mode(Uint16 w, Uint16 h, Uint16 bpp, bool fu
 	        // Note these options will break some HW! raspberry pi in full screen...
 	    	flags = SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE;
 	    } else {
-		LOG_INFO(log_ui_draw, "SDL Flags forced as windowing not available");
+			LOG_INFO(log_ui_draw, "SDL Flags forced as windowing not available");
 	        flags = SDL_FULLSCREEN;
 	    }
 	}
@@ -877,24 +898,28 @@ JiveSurface *jive_surface_set_video_mode(Uint16 w, Uint16 h, Uint16 bpp, bool fu
 	if (sdl) {
 		Uint32 mask;
 
-		/* check if we can reuse the existing suface? */
+		/* check if we can reuse the existing surface? */
 		if (video_info->wm_available) {
 			mask = (SDL_FULLSCREEN | SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+			printf("jive_surface_set_video_mode: video_info->wm_available\n");
 		}
 		else {
 			mask = (SDL_HWSURFACE | SDL_DOUBLEBUF);
+			printf("jive_surface_set_video_mode: !video_info->wm_available\n");
 		}
 
 		if ((sdl->w != w) || (sdl->h != h)
 		    || (bpp && sdl->format->BitsPerPixel != bpp)
 		    || ((sdl->flags & mask) != (flags & mask))) {
 			LOG_INFO(log_ui_draw, "SDL Video surface Cannot be reused");
-			sdl = NULL;
+			printf("jive_surface_set_video_mode: SDL Video surface Cannot be reused, BitsPerPixel = %d, bpp = %d, flagsmismatch = %d, sdl->w = %d, w = %d, sdl->h = %d, h = %d\n", sdl->format->BitsPerPixel, bpp, ((sdl->flags & mask) != (flags & mask)), sdl->w, w, sdl->h, h);
+			sdl = NULL ;
 		}
 	}
 
 	if (!sdl) {
 		/* create new surface */
+		printf("jive_surface_set_video_mode: creating new surface by calling SDL_SetVideoMode\n");
 		sdl = SDL_SetVideoMode(w, h, bpp, flags);
 		if (!sdl) {
 			LOG_ERROR(log_ui_draw, "SDL_SetVideoMode(%d,%d,%d): %s",
@@ -904,6 +929,7 @@ JiveSurface *jive_surface_set_video_mode(Uint16 w, Uint16 h, Uint16 bpp, bool fu
 
 		if ( (sdl->flags & SDL_HWSURFACE) && (sdl->flags & SDL_DOUBLEBUF)) {
 			LOG_INFO(log_ui_draw, "Using a hardware double buffer");
+			printf("jive_surface_set_video_mode: Using a hardware double buffer\n");
 		}
 
 		LOG_DEBUG(log_ui_draw, "Video mode: %d bits/pixel %d bytes/pixel [R<<%d G<<%d B<<%d]", sdl->format->BitsPerPixel, sdl->format->BytesPerPixel, sdl->format->Rshift, sdl->format->Gshift, sdl->format->Bshift);
@@ -1264,7 +1290,12 @@ void jive_surface_flip(JiveSurface *srf) {
 
 	SDL_Flip(real_sdl);
 #else
-	SDL_Flip(srf->sdl);
+	
+	if (SDL_Flip(srf->sdl) != 0) {
+		printf("jive_surface_flip: SDL_Flip unsuccessful\n");
+	} else {
+		printf("jive_surface_flip: SDL_Flip returned successful 0\n");
+	}
 #endif
 
 }
@@ -1278,8 +1309,18 @@ void jive_surface_blit(JiveSurface *src, JiveSurface *dst, Uint16 dx, Uint16 dy)
 	SDL_Rect dr;
 	dr.x = dx + dst->offset_x;
 	dr.y = dy + dst->offset_y;
+	// joa hack
+	//dr.h = 272;
+	//dr.w = 480;
 
-	SDL_BlitSurface(_resolve_SDL_surface(src), 0, dst->sdl, &dr);
+	JiveSurface *my_src = _resolve_SDL_surface(src); // joa
+	printf("jive_surface_blit: calling SDL_BlitSurface src=%s, dst=%s, dx=%d, dy=%d, dr.x=%d, dr.y=%d, dr.h=%d, dr.w=%d\n", my_src?"non-null":"null", dst->sdl?"non-null":"null", dx, dy, dr.x, dr.y, dr.h, dr.w);
+	if (SDL_BlitSurface(my_src, 0, dst->sdl, &dr) != 0) {
+	//if (SDL_BlitSurface(my_src, 0, dst->sdl, NULL) != 0) { // NULL dest rectangle -joa
+		printf("jive_surface_blit: SDL_BlitSurface unsuccessful\n");
+	} else {
+		printf("jive_surface_blit: SDL_BlitSurface returned successful 0\n");
+	}
 
 #ifdef JIVE_PROFILE_BLIT
 	t1 = jive_jiffies();
@@ -1327,12 +1368,16 @@ void jive_surface_blit_alpha(JiveSurface *src, JiveSurface *dst, Uint16 dx, Uint
 
 
 void jive_surface_get_size(JiveSurface *srf, Uint16 *w, Uint16 *h) {
+	//printf("jive_surface_get_size: entering\n"); // joa
+
 	if (IS_DYNAMIC_IMAGE(srf)) {
+		printf("jive_surface_get_size: calling jive_tile_get_min_size\n"); // joa
 		jive_tile_get_min_size(srf, w, h);
 		return;
 	}
 
 	if (!srf->sdl) {
+		printf("jive_surface_get_size: Underlying sdl surface already freed, possibly with release()\n");
 		LOG_ERROR(log_ui, "Underlying sdl surface already freed, possibly with release()");
 		if (w)
 			*w = 0;
@@ -1347,6 +1392,7 @@ void jive_surface_get_size(JiveSurface *srf, Uint16 *w, Uint16 *h) {
 	if (h) {
 		*h = (Uint16) srf->sdl->h;
 	}
+	//printf("jive_surface_get_size: returning at end since srf->sdl is non-NULL\n"); // joa
 }
 
 

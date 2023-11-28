@@ -220,6 +220,7 @@ static int jiveL_initSDL(lua_State *L) {
 	bool fullscreen = false;
 	char splashfile[32] = "jive/splash.png";
 #endif
+	printf("jiveL_initSDL: entering\n");
 	/* logging */
 	log_ui_draw = LOG_CATEGORY_GET("squeezeplay.ui.draw");
 	log_ui = LOG_CATEGORY_GET("squeezeplay.ui");
@@ -286,22 +287,26 @@ static int jiveL_initSDL(lua_State *L) {
 		JiveSurface *icon;
 
 		/* load the icon */
+		printf("jiveL_initSDL: calling jive_surface_load_image on jive/app.png\n"); // joa
 		icon = jive_surface_load_image("jive/app.png");
 		if (icon) {
 			jive_surface_set_wm_icon(icon);
 			jive_surface_free(icon);
 		}
 
+		printf("jiveL_initSDL: calling jive_surface_load_image on %s\n", splashfile); // joa
 		splash = jive_surface_load_image(splashfile);
 		if (splash) {
 			jive_surface_get_size(splash, &splash_w, &splash_h);
 
 			screen_w = splash_w;
 			screen_h = splash_h;
+			printf("jiveL_initSDL: splashfile = %s, wm_available, screen_w = %d, screen_h = %d\n", splashfile, screen_w, screen_h);
 		}
 	} else {
 		/* product build and full screen...*/
 
+		printf("jiveL_initSDL: no window manager SHOULD NOT HAPPEN\n"); // joa
 		sprintf(splashfile, "jive/splash%dx%d.png", screen_w, screen_h);
 
 		splash = jive_surface_load_image(splashfile);
@@ -317,6 +322,7 @@ static int jiveL_initSDL(lua_State *L) {
 		fullscreen = true;
 	}
 
+	printf("jiveL_initSDL: about to call jive_surface_set_video_mode to create initial window\n");
 	srf = jive_surface_set_video_mode(screen_w, screen_h, screen_bpp, fullscreen);
 	if (!srf) {
 		LOG_ERROR(log_ui_draw, "Video mode not supported: %dx%d\n", screen_w, screen_h);
@@ -325,9 +331,12 @@ static int jiveL_initSDL(lua_State *L) {
 	}
 
 	if (splash) {
+		printf("jiveL_initSDL: about to call jive_surface_blit with the splash\n");
 		jive_surface_blit(splash, srf, (screen_w - splash_w) > 0 ?((screen_w - splash_w) / 2):0, (screen_w - splash_w) > 0 ?((screen_w - splash_w) / 2):0);
+		printf("jiveL_initSDL: about to call jive_surface_flip\n");
 		jive_surface_flip(srf);
 		LOG_INFO(log_ui_draw, "Splash %s %dx%d Screen %dx%d", splashfile,splash_w,splash_h,screen_w,screen_h);
+		SDL_PumpEvents();
 	}
 
 	lua_getfield(L, 1, "screen");
@@ -362,6 +371,7 @@ static int jiveL_initSDL(lua_State *L) {
 
 #endif /* JIVE_NO_DISPLAY */
 
+	printf("jiveL_initSDL: returning 0\n");
 	return 0;
 }
 
