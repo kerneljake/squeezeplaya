@@ -24,6 +24,7 @@ I'm happy to fold this back upstream when it is sufficiently stable.
 - [x] multimedia key support (next/prev/play/pause) without requiring [noTunes](https://github.com/tombonez/noTunes)
 - [x] handle runtime changes in default output device like unplugging headphone jack, changing Sound Output, etc.
 - [x] double click NowPlaying applet to rotate skin instead of single click
+- [x] memory leak fix in Quartz redraw
 - [ ] move volume slider quickly by clicking in the grey empty space area
 - [ ] tray icon menu items for controlling playback
 - [ ] don't clobber VLC's output device on startup
