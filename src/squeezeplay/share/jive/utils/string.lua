@@ -27,6 +27,7 @@ Builds on Lua's built-in string.* class
 local tonumber, setmetatable = tonumber, setmetatable
 local table  = require('jive.utils.table')
 local ltable = require("string")
+local utf8   = require("lua-utf8")
 
 module(...)
 
@@ -167,6 +168,136 @@ function urlEncode (str)
 	)
 	str = ltable.gsub(str, " ", "+")
 	return str
+end
+
+-- flip a string if UTF-8 Right To Left codepoints detected
+-- otherwise, return original LTR string
+-- also handles simple bidirectional cases
+
+function flip_rtl(s)
+
+    if not utf8.len(s) then
+        return s -- bogus input
+    end
+
+    local MIN_RTL_CODEPOINT = 0x0590
+    local found = false
+    for i=1,utf8.len(s) do
+        -- Check for known RTL Unicode ranges
+        local codepoint = utf8.codepoint(s, utf8.offset(s, i))
+        if (codepoint < MIN_RTL_CODEPOINT) then
+            -- do nothing, fast DQ
+        elseif (codepoint >= 0x0590 and codepoint <= 0x05FF) or  -- Hebrew
+           (codepoint >= 0xFB1D and codepoint <= 0xFB4F) or      -- Hebrew Presentation Forms
+           (codepoint >= 0x0600 and codepoint <= 0x06FF) or      -- Arabic
+           (codepoint >= 0x0750 and codepoint <= 0x077F) or      -- Arabic Supplement
+           (codepoint >= 0x0870 and codepoint <= 0x089F) or      -- Arabic Extended-B
+           (codepoint >= 0x08A0 and codepoint <= 0x08FF) or      -- Arabic Extended-A
+           (codepoint >= 0xFB50 and codepoint <= 0xFDFF) or      -- Arabic Presentation Forms-A
+           (codepoint >= 0xFE70 and codepoint <= 0xFEFF)         -- Arabic Presentation Forms-B
+           then
+            found = true
+            break
+        end
+    end
+    if not found then
+        return s
+    end
+
+    lineBuf = ''   -- one line
+    output = ''    -- all lines
+    ltrBuf = ''    -- LTR if encountered
+    mirrorBuf = '' -- mirror-able symbols only
+    mirror = {     -- symbols having mirror images
+        ["("] = ")",
+        [")"] = "(",
+        ["["] = "]",
+        ["]"] = "[",
+        ["<"] = ">",
+        [">"] = "<",
+        ["{"] = "}",
+        ["}"] = "{",
+        ["-"] = "-" -- special case for playlist status entries
+    }
+
+    local function reflect(s)
+        -- reflect mirror-able symbols in the string
+        -- loop is really for corner cases of multiple adjacent symbols ((likethis))
+        local reflection = ''
+        for i=1,#s do
+            local char = s:sub(i, i) -- get the character at position i
+            reflection = reflection .. mirror[char]
+        end
+        return reflection
+    end
+
+    local function flush_buffers()
+        -- called upon \n or EOF
+        local result = ''
+        if (ltrBuf ~= '') then
+            if (mirrorBuf ~= '') then
+                ltrBuf = ltrBuf .. mirrorBuf -- unmirrored
+            end
+            result = ltrBuf
+        elseif (mirrorBuf ~= '') then
+            result = reflect(mirrorBuf) -- mirrored
+        end
+        result = result .. lineBuf
+        lineBuf = ''
+        ltrBuf = ''
+        mirrorBuf = '' -- clear buffers
+        return result
+    end
+
+    -- state machine loop
+    for i=1,utf8.len(s) do
+        codepoint = utf8.codepoint(s, utf8.offset(s, i))
+        character = utf8.char(codepoint)
+
+        if (mirror[character]) then
+            -- collect symbols that might need to be reflected
+            mirrorBuf = mirrorBuf .. character
+        elseif ('\n' == character) then
+            output = output .. flush_buffers() .. '\n'
+        elseif (' ' == character) then
+            if (ltrBuf ~= '') then
+                if (mirrorBuf ~= '') then
+                    -- don't reflect mirror-able symbols associated with LTR
+                    ltrBuf = ' ' .. ltrBuf .. mirrorBuf
+                    mirrorBuf = ''
+                else
+                    ltrBuf = ltrBuf .. ' ' -- buffer it in LTR case
+                end
+            else
+                if (mirrorBuf ~= '') then
+                    lineBuf = reflect(mirrorBuf) .. lineBuf -- reflect
+                    mirrorBuf = ''
+                end
+                lineBuf = ' ' .. lineBuf -- copy it in RTL case
+            end
+        elseif (codepoint < MIN_RTL_CODEPOINT) then
+            -- LTR
+            if (mirrorBuf ~= '') then
+                ltrBuf = mirrorBuf .. ltrBuf
+                mirrorBuf = ''
+            end
+            ltrBuf = ltrBuf .. character
+        else
+            -- RTL
+            if (mirrorBuf ~= '') then
+                lineBuf = reflect(mirrorBuf) .. lineBuf
+                mirrorBuf = ''
+            end
+            if (ltrBuf ~= '') then
+                lineBuf = ltrBuf .. lineBuf
+                ltrBuf = ''
+            end
+            lineBuf = character .. lineBuf
+        end
+    end
+
+    output = output .. flush_buffers()
+    return(output)
 end
 
 --[[

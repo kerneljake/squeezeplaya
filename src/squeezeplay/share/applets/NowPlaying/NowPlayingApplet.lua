@@ -1972,12 +1972,12 @@ end
 function _extractTrackInfo(self, _track)
 	if _track.track then
 		local returnTable = {}
-		table.insert(returnTable, _track.track)
-		table.insert(returnTable, _track.artist)
-		table.insert(returnTable, _track.album)
+		table.insert(returnTable, string.flip_rtl(_track.track))
+		table.insert(returnTable, string.flip_rtl(_track.artist))
+		table.insert(returnTable, string.flip_rtl(_track.album))
 		return returnTable
 	else
-		return _track.text or "\n\n\n"
+		return string.flip_rtl(_track.text) or "\n\n\n"
 	end
 end
 
@@ -2001,5 +2001,4 @@ function free(self)
 
 	return true
 end
-
 

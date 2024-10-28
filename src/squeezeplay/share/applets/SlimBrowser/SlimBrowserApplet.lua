@@ -25,6 +25,7 @@ local oo                     = require("loop.simple")
 local math                   = require("math")
 local table                  = require("jive.utils.table")
 local string                 = require("string")
+local jivestring             = require("jive.utils.string")
 local json                   = require("json")
                              
 local Applet                 = require("jive.Applet")
@@ -3419,6 +3420,10 @@ local function _statusSink(step, chunk, err)
 
 		local hasSize = _safeDeref(data, 'item_loop', 1)
 		if not hasSize then return end
+
+		for i=1,#data.item_loop do
+			data.item_loop[i].text = jivestring.flip_rtl(data.item_loop[i].text)
+		end
 
 		if logd:isDebug() then
 			debug.dump(data, 8)

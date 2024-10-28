@@ -108,9 +108,9 @@ sdl-gfx: SDL_gfx-2.0.15/Makefile
 # lua
 #####
 
-.PHONY: lua-all tolua++ luasocket slnunicode luajson loop luaexpat luafilesystem luaprofiler luazipfilter luamd5
+.PHONY: lua-all tolua++ luasocket slnunicode luajson loop luaexpat luafilesystem luaprofiler luazipfilter luamd5 lua-utf8
 
-lua-all: lua tolua++ luasocket slnunicode luajson loop luaexpat luafilesystem luaprofiler luazipfilter luamd5
+lua-all: lua tolua++ luasocket slnunicode luajson loop luaexpat luafilesystem luaprofiler luazipfilter luamd5 lua-utf8
 
 # lua (requires readline ncurses)
 lua:
@@ -141,6 +141,13 @@ luamd5:
 	cd luamd5; make -f Makefile.osx G="${CFLAGS}" LUA=${PREFIX} MYNAME=md5 MYLDFLAGS="-bundle -undefined dynamic_lookup ${LDFLAGS}"
 	cp luamd5/md5.so ${PREFIX}/lib/lua/5.1/md5.so
 	cp luamd5/sha1.so ${PREFIX}/lib/lua/5.1/sha1.so
+
+lua-utf8:
+	cd luautf8; make -f Makefile.osx G="${CFLAGS}" LUA=${PREFIX} MYNAME=lua-utf8 MYLDFLAGS="-bundle -undefined dynamic_lookup ${LDFLAGS}"
+	cp luautf8/lua-utf8.so ${PREFIX}/lib/lua/5.1/lua-utf8.so
+	cp luautf8/lua-utf8.so ${PREFIX}/SqueezePlay.app/Contents/lib/lua/5.1/lua-utf8.so
+	# TODO: make clean (below)
+	# TODO: non-macos
 
 loop:
 	-mkdir ${PREFIX}/share/lua/5.1/loop
