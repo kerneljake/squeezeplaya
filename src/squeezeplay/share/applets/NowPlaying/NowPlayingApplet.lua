@@ -501,7 +501,7 @@ function notify_playerTitleStatus(self, player, text, duration)
 		return
 	end
 	log:debug("notify_playerTitleStatus(): ", text)
-	self:_setTitleStatus(text, duration)
+	self:_setTitleStatus(string.flip_rtl(text), duration)
 end
 
 function notify_playerPower(self, player, power)

@@ -170,19 +170,34 @@ function urlEncode (str)
 	return str
 end
 
--- flip a string if UTF-8 Right To Left codepoints detected
--- otherwise, return original LTR string
--- also handles simple bidirectional cases
+--[[
+
+=head2 flip_rtl(s)
+
+flips a string to RTL if UTF-8 Right To Left codepoints detected
+otherwise, return original LTR string
+also handles simple bidirectional cases
+
+When called, the string will have an in-memory representation like this:
+ABC (DEF) GH (1234)
+Reversing the string naïvely would result in:
+)4321( HG )FED( CBA
+The algorithm attempts to reverse the string in a manner that makes sense to a native speaker:
+(1234) HG (FED) CBA
+
+=cut
+--]]
 
 function flip_rtl(s)
 
-    if not utf8.len(s) then
+    local utf8len = utf8.len(s)
+    if not utf8len then
         return s -- bogus input
     end
 
     local MIN_RTL_CODEPOINT = 0x0590
     local found = false
-    for i=1,utf8.len(s) do
+    for i=1,utf8len do
         -- Check for known RTL Unicode ranges
         local codepoint = utf8.codepoint(s, utf8.offset(s, i))
         if (codepoint < MIN_RTL_CODEPOINT) then
@@ -250,7 +265,7 @@ function flip_rtl(s)
     end
 
     -- state machine loop
-    for i=1,utf8.len(s) do
+    for i=1,utf8len do
         codepoint = utf8.codepoint(s, utf8.offset(s, i))
         character = utf8.char(codepoint)
 
