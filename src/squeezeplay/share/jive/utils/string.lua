@@ -175,7 +175,7 @@ end
 =head2 flip_rtl(s)
 
 flips a string to RTL if UTF-8 Right To Left codepoints detected
-otherwise, return original LTR string
+otherwise, returns original LTR string
 also handles simple bidirectional cases
 
 When called, the string will have an in-memory representation like this:
@@ -185,6 +185,7 @@ Reversing the string naïvely would result in:
 The algorithm attempts to reverse the string in a manner that makes sense to a native speaker:
 (1234) HG (FED) CBA
 
+Note: consecutive whitespace characters are normalized into a single space.
 =cut
 --]]
 
@@ -196,21 +197,24 @@ function flip_rtl(s)
     end
 
     local MIN_RTL_CODEPOINT = 0x0590
+    local function is_rtl_codepoint(codepoint)
+        return (codepoint >= 0x0590 and codepoint <= 0x05FF) or   -- Hebrew
+            (codepoint >= 0xFB1D and codepoint <= 0xFB4F) or      -- Hebrew Presentation Forms
+            (codepoint >= 0x0600 and codepoint <= 0x06FF) or      -- Arabic
+            (codepoint >= 0x0750 and codepoint <= 0x077F) or      -- Arabic Supplement
+            (codepoint >= 0x0870 and codepoint <= 0x089F) or      -- Arabic Extended-B
+            (codepoint >= 0x08A0 and codepoint <= 0x08FF) or      -- Arabic Extended-A
+            (codepoint >= 0xFB50 and codepoint <= 0xFDFF) or      -- Arabic Presentation Forms-A
+            (codepoint >= 0xFE70 and codepoint <= 0xFEFF)         -- Arabic Presentation Forms-B
+    end
+
+    -- return unchanged if no RTL codepoints found
     local found = false
     for i=1,utf8len do
-        -- Check for known RTL Unicode ranges
         local codepoint = utf8.codepoint(s, utf8.offset(s, i))
         if (codepoint < MIN_RTL_CODEPOINT) then
             -- do nothing, fast DQ
-        elseif (codepoint >= 0x0590 and codepoint <= 0x05FF) or  -- Hebrew
-           (codepoint >= 0xFB1D and codepoint <= 0xFB4F) or      -- Hebrew Presentation Forms
-           (codepoint >= 0x0600 and codepoint <= 0x06FF) or      -- Arabic
-           (codepoint >= 0x0750 and codepoint <= 0x077F) or      -- Arabic Supplement
-           (codepoint >= 0x0870 and codepoint <= 0x089F) or      -- Arabic Extended-B
-           (codepoint >= 0x08A0 and codepoint <= 0x08FF) or      -- Arabic Extended-A
-           (codepoint >= 0xFB50 and codepoint <= 0xFDFF) or      -- Arabic Presentation Forms-A
-           (codepoint >= 0xFE70 and codepoint <= 0xFEFF)         -- Arabic Presentation Forms-B
-           then
+        elseif (is_rtl_codepoint(codepoint)) then
             found = true
             break
         end
@@ -219,9 +223,8 @@ function flip_rtl(s)
         return s
     end
 
-    lineBuf = ''   -- one line
-    output = ''    -- all lines
-    ltrBuf = ''    -- LTR if encountered
+    rtlBuf = ''
+    ltrBuf = ''
     mirrorBuf = '' -- mirror-able symbols only
     mirror = {     -- symbols having mirror images
         ["("] = ")",
@@ -231,8 +234,7 @@ function flip_rtl(s)
         ["<"] = ">",
         [">"] = "<",
         ["{"] = "}",
-        ["}"] = "{",
-        ["-"] = "-" -- special case for playlist status entries
+        ["}"] = "{"
     }
 
     local function reflect(s)
@@ -243,28 +245,35 @@ function flip_rtl(s)
             local char = s:sub(i, i) -- get the character at position i
             reflection = reflection .. mirror[char]
         end
+        mirrorBuf = '' -- side effect
         return reflection
     end
 
     local function flush_buffers()
-        -- called upon \n or EOF
-        local result = ''
         if (ltrBuf ~= '') then
+            -- LTR
             if (mirrorBuf ~= '') then
-                ltrBuf = ltrBuf .. mirrorBuf -- unmirrored
+                ltrBuf = ltrBuf .. mirrorBuf -- don't reflect
             end
-            result = ltrBuf
+            table.insert(tokens, ltrBuf)
+            ltrBuf = ''
+        elseif (rtlBuf ~= '') then
+            -- RTL
+            if (mirrorBuf ~= '') then
+                rtlBuf = reflect(mirrorBuf) .. rtlBuf -- reflect
+            end
+            table.insert(tokens, rtlBuf)
+            rtlBuf = ''
         elseif (mirrorBuf ~= '') then
-            result = reflect(mirrorBuf) -- mirrored
+            -- it's a mirror character after whitespace
+            -- this is a corner case where we don't know the associativity,
+            -- so assume the base direction of RTL, and mirror it
+            table.insert(tokens, reflect(mirrorBuf))
         end
-        result = result .. lineBuf
-        lineBuf = ''
-        ltrBuf = ''
-        mirrorBuf = '' -- clear buffers
-        return result
     end
 
-    -- state machine loop
+    -- build the tokens table with lexemes that are flipped appropriately
+    tokens = {}
     for i=1,utf8len do
         codepoint = utf8.codepoint(s, utf8.offset(s, i))
         character = utf8.char(codepoint)
@@ -273,45 +282,62 @@ function flip_rtl(s)
             -- collect symbols that might need to be reflected
             mirrorBuf = mirrorBuf .. character
         elseif ('\n' == character) then
-            output = output .. flush_buffers() .. '\n'
-        elseif (' ' == character) then
-            if (ltrBuf ~= '') then
-                if (mirrorBuf ~= '') then
-                    -- don't reflect mirror-able symbols associated with LTR
-                    ltrBuf = ' ' .. ltrBuf .. mirrorBuf
-                    mirrorBuf = ''
-                else
-                    ltrBuf = ltrBuf .. ' ' -- buffer it in LTR case
-                end
-            else
-                if (mirrorBuf ~= '') then
-                    lineBuf = reflect(mirrorBuf) .. lineBuf -- reflect
-                    mirrorBuf = ''
-                end
-                lineBuf = ' ' .. lineBuf -- copy it in RTL case
+            flush_buffers()
+            table.insert(tokens, '\n')
+        elseif (' ' == character or '\t' == character) then
+            flush_buffers()
+        elseif (is_rtl_codepoint(codepoint)) then
+            -- RTL
+            if (mirrorBuf ~= '') then
+                rtlBuf = reflect(mirrorBuf) .. rtlBuf
+            elseif (ltrBuf ~= '') then
+                -- handle case of association without whitespace
+                rtlBuf = ltrBuf .. rtlBuf
+                ltrBuf = ''
             end
-        elseif (codepoint < MIN_RTL_CODEPOINT) then
-            -- LTR
+            rtlBuf = character .. rtlBuf
+        else
+            -- LTR, buffer for later
             if (mirrorBuf ~= '') then
                 ltrBuf = mirrorBuf .. ltrBuf
                 mirrorBuf = ''
             end
             ltrBuf = ltrBuf .. character
-        else
-            -- RTL
-            if (mirrorBuf ~= '') then
-                lineBuf = reflect(mirrorBuf) .. lineBuf
-                mirrorBuf = ''
+        end
+    end
+    flush_buffers()
+
+    local function flush_ltrTok_buffer()
+        -- insert accumulated LTR tokens into the lineTokBuf
+        if #ltrTokBuf then
+            for i=#ltrTokBuf,1,-1 do
+                table.insert(lineTokBuf, ltrTokBuf[i])
             end
-            if (ltrBuf ~= '') then
-                lineBuf = ltrBuf .. lineBuf
-                ltrBuf = ''
-            end
-            lineBuf = character .. lineBuf
+            ltrTokBuf = {}
         end
     end
 
-    output = output .. flush_buffers()
+    -- work backwards through the tokens table and construct output string
+    output = ''
+    ltrTokBuf = {}
+    lineTokBuf = {}
+    for i=#tokens,1,-1 do
+        codepoint = utf8.codepoint(tokens[i], utf8.offset(tokens[i], 1))
+        if (is_rtl_codepoint(codepoint)) then
+            flush_ltrTok_buffer()
+            table.insert(lineTokBuf, tokens[i])
+        elseif ('\n' == tokens[i]) then
+            flush_ltrTok_buffer()
+            output = '\n' .. table.concat(lineTokBuf, ' ') .. output
+            lineTokBuf = {}
+        else
+            -- it’s LTR, buffer it in the opposite order
+            -- the goal is to get the spacing around LTR tokens correct
+            table.insert(ltrTokBuf, tokens[i])
+        end
+    end
+    flush_ltrTok_buffer()
+    output = table.concat(lineTokBuf, ' ') .. output
     return(output)
 end
 
