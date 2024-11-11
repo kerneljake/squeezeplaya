@@ -186,6 +186,7 @@ The algorithm attempts to reverse the string in a manner that makes sense to a n
 (1234) HG (FED) CBA
 
 Note: consecutive whitespace characters are normalized into a single space.
+
 =cut
 --]]
 
@@ -250,20 +251,25 @@ function flip_rtl(s)
     end
 
     local function flush_buffers()
-        if (ltrBuf ~= '') then
-            -- LTR
-            if (mirrorBuf ~= '') then
-                ltrBuf = ltrBuf .. mirrorBuf -- don't reflect
-            end
-            table.insert(tokens, ltrBuf)
-            ltrBuf = ''
-        elseif (rtlBuf ~= '') then
+        if (rtlBuf ~= '') then
             -- RTL
             if (mirrorBuf ~= '') then
                 rtlBuf = reflect(mirrorBuf) .. rtlBuf -- reflect
             end
+            if (ltrBuf ~= '') then
+                rtlBuf = ltrBuf .. rtlBuf
+                ltrBuf = ''
+            end
             table.insert(tokens, rtlBuf)
             rtlBuf = ''
+        elseif (ltrBuf ~= '') then
+            -- LTR
+            if (mirrorBuf ~= '') then
+                ltrBuf = ltrBuf .. mirrorBuf -- don't reflect
+                mirrorBuf = ''
+            end
+            table.insert(tokens, ltrBuf)
+            ltrBuf = ''
         elseif (mirrorBuf ~= '') then
             -- it's a mirror character after whitespace
             -- this is a corner case where we don't know the associativity,
@@ -272,7 +278,7 @@ function flip_rtl(s)
         end
     end
 
-    -- build the tokens table with lexemes that are flipped appropriately
+    -- build the tokens table with lexemes that are stored in visual order
     tokens = {}
     for i=1,utf8len do
         codepoint = utf8.codepoint(s, utf8.offset(s, i))
@@ -322,22 +328,31 @@ function flip_rtl(s)
     ltrTokBuf = {}
     lineTokBuf = {}
     for i=#tokens,1,-1 do
-        codepoint = utf8.codepoint(tokens[i], utf8.offset(tokens[i], 1))
-        if (is_rtl_codepoint(codepoint)) then
+        local token = tokens[i]
+        local is_rtl_token = false
+
+        for j=1,utf8.len(token) do
+            local codepoint = utf8.codepoint(token, utf8.offset(token, j))
+            if is_rtl_codepoint(codepoint) then
+                is_rtl_token = true
+                break
+            end
+        end
+        if (is_rtl_token) then
             flush_ltrTok_buffer()
-            table.insert(lineTokBuf, tokens[i])
-        elseif ('\n' == tokens[i]) then
+            table.insert(lineTokBuf, token)
+        elseif ('\n' == token) then
             flush_ltrTok_buffer()
             output = '\n' .. table.concat(lineTokBuf, ' ') .. output
             lineTokBuf = {}
         else
             -- it’s LTR, buffer it in the opposite order
             -- the goal is to get the spacing around LTR tokens correct
-            table.insert(ltrTokBuf, tokens[i])
+            table.insert(ltrTokBuf, token)
         end
     end
     flush_ltrTok_buffer()
-    output = table.concat(lineTokBuf, ' ') .. output
+    output = table.concat(lineTokBuf, ' ') .. output -- space normalization happens here
     return(output)
 end
 
