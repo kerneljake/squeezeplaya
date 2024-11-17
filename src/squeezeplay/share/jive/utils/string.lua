@@ -25,9 +25,10 @@ Builds on Lua's built-in string.* class
 
 
 local tonumber, setmetatable = tonumber, setmetatable
-local table  = require('jive.utils.table')
-local ltable = require("string")
-local utf8   = require("lua-utf8")
+local table   = require('jive.utils.table')
+local ltable  = require("string")
+local utf8    = require("lua-utf8")
+local fribidi = require("fribidi")
 
 module(...)
 
@@ -174,18 +175,16 @@ end
 
 =head2 flip_rtl(s)
 
-flips a string to RTL if UTF-8 Right To Left codepoints detected
-otherwise, returns original LTR string
-also handles simple bidirectional cases
+Flips a string to RTL if UTF-8 Right To Left codepoints detected.
+Otherwise, returns original LTR string.
+Also handles bidirectional cases.
 
-When called, the string will have an in-memory representation like this:
+When called, the string will have an in-memory, logical representation like this:
 ABC (DEF) GH (1234)
 Reversing the string naïvely would result in:
 )4321( HG )FED( CBA
-The algorithm attempts to reverse the string in a manner that makes sense to a native speaker:
+The algorithm reverses the string in a manner that makes visual sense to a native speaker:
 (1234) HG (FED) CBA
-
-Note: consecutive whitespace characters are normalized into a single space.
 
 =cut
 --]]
@@ -224,135 +223,13 @@ function flip_rtl(s)
         return s
     end
 
-    rtlBuf = ''
-    ltrBuf = ''
-    mirrorBuf = '' -- mirror-able symbols only
-    mirror = {     -- symbols having mirror images
-        ["("] = ")",
-        [")"] = "(",
-        ["["] = "]",
-        ["]"] = "[",
-        ["<"] = ">",
-        [">"] = "<",
-        ["{"] = "}",
-        ["}"] = "{"
-    }
-
-    local function reflect(s)
-        -- reflect mirror-able symbols in the string
-        -- loop is really for corner cases of multiple adjacent symbols ((likethis))
-        local reflection = ''
-        for i=1,#s do
-            local char = s:sub(i, i) -- get the character at position i
-            reflection = reflection .. mirror[char]
-        end
-        mirrorBuf = '' -- side effect
-        return reflection
+    -- handle newlines since fribidi cannot
+    local lines = {}
+    for line in ltable.gmatch(s, "([^\n]*)\n?") do
+        table.insert(lines, fribidi.log2vis(line)) -- flip logical to visual
     end
 
-    local function flush_buffers()
-        if (rtlBuf ~= '') then
-            -- RTL
-            if (mirrorBuf ~= '') then
-                rtlBuf = reflect(mirrorBuf) .. rtlBuf -- reflect
-            end
-            if (ltrBuf ~= '') then
-                rtlBuf = ltrBuf .. rtlBuf
-                ltrBuf = ''
-            end
-            table.insert(tokens, rtlBuf)
-            rtlBuf = ''
-        elseif (ltrBuf ~= '') then
-            -- LTR
-            if (mirrorBuf ~= '') then
-                ltrBuf = ltrBuf .. mirrorBuf -- don't reflect
-                mirrorBuf = ''
-            end
-            table.insert(tokens, ltrBuf)
-            ltrBuf = ''
-        elseif (mirrorBuf ~= '') then
-            -- it's a mirror character after whitespace
-            -- this is a corner case where we don't know the associativity,
-            -- so assume the base direction of RTL, and mirror it
-            table.insert(tokens, reflect(mirrorBuf))
-        end
-    end
-
-    -- build the tokens table with lexemes that are stored in visual order
-    tokens = {}
-    for i=1,utf8len do
-        codepoint = utf8.codepoint(s, utf8.offset(s, i))
-        character = utf8.char(codepoint)
-
-        if (mirror[character]) then
-            -- collect symbols that might need to be reflected
-            mirrorBuf = mirrorBuf .. character
-        elseif ('\n' == character) then
-            flush_buffers()
-            table.insert(tokens, '\n')
-        elseif (' ' == character or '\t' == character) then
-            flush_buffers()
-        elseif (is_rtl_codepoint(codepoint)) then
-            -- RTL
-            if (mirrorBuf ~= '') then
-                rtlBuf = reflect(mirrorBuf) .. rtlBuf
-            elseif (ltrBuf ~= '') then
-                -- handle case of association without whitespace
-                rtlBuf = ltrBuf .. rtlBuf
-                ltrBuf = ''
-            end
-            rtlBuf = character .. rtlBuf
-        else
-            -- LTR, buffer for later
-            if (mirrorBuf ~= '') then
-                ltrBuf = mirrorBuf .. ltrBuf
-                mirrorBuf = ''
-            end
-            ltrBuf = ltrBuf .. character
-        end
-    end
-    flush_buffers()
-
-    local function flush_ltrTok_buffer()
-        -- insert accumulated LTR tokens into the lineTokBuf
-        if #ltrTokBuf then
-            for i=#ltrTokBuf,1,-1 do
-                table.insert(lineTokBuf, ltrTokBuf[i])
-            end
-            ltrTokBuf = {}
-        end
-    end
-
-    -- work backwards through the tokens table and construct output string
-    output = ''
-    ltrTokBuf = {}
-    lineTokBuf = {}
-    for i=#tokens,1,-1 do
-        local token = tokens[i]
-        local is_rtl_token = false
-
-        for j=1,utf8.len(token) do
-            local codepoint = utf8.codepoint(token, utf8.offset(token, j))
-            if is_rtl_codepoint(codepoint) then
-                is_rtl_token = true
-                break
-            end
-        end
-        if (is_rtl_token) then
-            flush_ltrTok_buffer()
-            table.insert(lineTokBuf, token)
-        elseif ('\n' == token) then
-            flush_ltrTok_buffer()
-            output = '\n' .. table.concat(lineTokBuf, ' ') .. output
-            lineTokBuf = {}
-        else
-            -- it’s LTR, buffer it in the opposite order
-            -- the goal is to get the spacing around LTR tokens correct
-            table.insert(ltrTokBuf, token)
-        end
-    end
-    flush_ltrTok_buffer()
-    output = table.concat(lineTokBuf, ' ') .. output -- space normalization happens here
+    local output = table.concat(lines, '\n') -- put them back, if necessary
     return(output)
 end
 
