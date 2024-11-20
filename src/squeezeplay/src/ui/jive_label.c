@@ -413,44 +413,57 @@ int jiveL_label_draw(lua_State *L) {
 	}
 
 	for (i = 0; i < peer->num_lines; i++) {
-		Uint16 w, h, o, s;
-		Uint16 text_w;
+		Uint16 w, h, o, start_x;
 		LabelLine *line = &peer->line[i];
 
 		jive_surface_get_size(line->text_fg, &w, &h);
-
 	
-		/* second text when scrolling */
-		o = (peer->scroll_offset < 0) ? 0 : peer->scroll_offset;
-		if (w < peer->label_w) {
-			o = 0;
-		}
+        /* offset for split text when scrolling */
+        o = (peer->scroll_offset < 0) ? 0 : peer->scroll_offset;
+        if (w < peer->label_w) {
+            o = 0;
+        }
 
-		s = peer->text_w - o + SCROLL_PAD_RIGHT;
-		text_w = peer->label_w;
+        for (int j=1; j>=0; j--) {
+            JiveSurface *src;
 
-		/* shadow text */
-		if (line->text_sh) {
-			jive_surface_blit_clip(line->text_sh, o, 0, text_w, h,
-					       srf, peer->w.bounds.x + line->label_x + 1, peer->w.bounds.y + line->label_y + 1);
+            /* shadow is one pixel offset */
+            if (1==j) {
+                if (!line->text_sh) {
+                    continue; /* no shadow */
+                }
+                src = line->text_sh;
+            } else {
+                src = line->text_fg;
+            }
 
-			if (o && s < text_w) {
-				Uint16 len = MAX(0, text_w - s);
-				jive_surface_blit_clip(line->text_sh, 0, 0, len, h,
-						       srf, peer->w.bounds.x + line->label_x + s + 1, peer->w.bounds.y + line->label_y + 1);
-			} 
-		}
+            if (1) { // XXX RTL comparitor here
+                /* scroll RTL text */
+                if (o < peer->label_w) {
+                    jive_surface_blit_clip(src, 0, 0, peer->label_w - o, h,
+                            srf, peer->w.bounds.x + line->label_x + o + j, peer->w.bounds.y + line->label_y + j);
+                }
+                if (o > SCROLL_PAD_RIGHT) {
+                    /* sliding window */
+                    start_x = w + SCROLL_PAD_RIGHT - o;
+                    Uint16 len = MIN(w - start_x, peer->label_w);
+                    jive_surface_blit_clip(src, start_x, 0, len, h,
+                            srf, peer->w.bounds.x + line->label_x + j, peer->w.bounds.y + line->label_y + j);
+                }
+            } else {
+                /* scroll LTR text */
+                jive_surface_blit_clip(src, o, 0, peer->label_w, h,
+                            srf, peer->w.bounds.x + line->label_x + j, peer->w.bounds.y + line->label_y + j);
 
-		/* foreground text */
-		jive_surface_blit_clip(line->text_fg, o, 0, text_w, h,
-				       srf, peer->w.bounds.x + line->label_x, peer->w.bounds.y + line->label_y);
-
-		if (o && s < text_w) {
-			Uint16 len = MAX(0, text_w - s);
-			jive_surface_blit_clip(line->text_fg, 0, 0, len, h,
-					       srf, peer->w.bounds.x + line->label_x + s, peer->w.bounds.y + line->label_y);
-		} 
-	}
+                start_x = peer->text_w - o + SCROLL_PAD_RIGHT;
+                if (o && start_x < peer->label_w) {
+                    Uint16 len = MAX(0, peer->label_w - start_x);
+                    jive_surface_blit_clip(src, 0, 0, len, h,
+                            srf, peer->w.bounds.x + line->label_x + start_x + j, peer->w.bounds.y + line->label_y + j);
+                }
+            }
+        }
+    }
 
 	return 0;
 }
