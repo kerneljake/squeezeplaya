@@ -370,7 +370,7 @@ clean:
 	-cd luamd5; make MYNAME=md5 clean
 	@echo "----------------------------------------------------------"
 	@echo "Cleaning: fribidi"
-	-cd fribidi-1.0.16; make MYNAME=fribidi clean
+	-cd fribidi-1.0.16; make MYNAME=fribidi distclean
 	@echo "----------------------------------------------------------"
 	@echo "Cleaning: Build dir"
 	-cd $(BASE_DIR)build; rm -rf osx
