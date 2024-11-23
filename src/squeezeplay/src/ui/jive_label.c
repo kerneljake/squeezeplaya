@@ -245,7 +245,7 @@ static void prepare(lua_State *L) {
                                    /*output*/ visual, NULL, NULL, NULL);
             /* reordered text */
             fribidi_unicode_to_charset(charset_utf8, visual, length, tmp);
-            line->is_rtl = true;
+            line->is_rtl = (FRIBIDI_PAR_RTL == base_direction);
         } else {
 		    strncpy(tmp, str, len);
 		    tmp[len] = '\0';
