@@ -70,20 +70,15 @@ function configureApplet(meta)
 
 	local slimDiscovery = appletManager:loadApplet("SlimDiscovery")
 
-	-- Current server
-	if settings.squeezeNetwork then
-		server = SlimServer(jnt, "mysqueezebox.com", "mysqueezebox.com")
-		server:updateInit({ip=jnt:getSNHostname()}, 9000)
-		SlimServer:addLocallyRequestedServer(server)
-
-	elseif settings.serverName then
---	elseif settings.serverName then
+	if settings.serverName then
 		if not settings.serverUuid then
 			settings.serverUuid = settings.serverName
 		end
 		server = SlimServer(jnt, settings.serverUuid, settings.serverName)
 		server:updateInit(settings.serverInit)
 		SlimServer:addLocallyRequestedServer(server)
+	else
+		log:info("server not yet present")
 	end
 
 	-- Current player
@@ -125,7 +120,7 @@ function configureApplet(meta)
 		-- change to a non-existant player to prevent browser connecting
 		settings.currentPlayer = "ff:ff:ff:ff:ff:fe"
 
-		-- wait until SN is connected so we know the PIN
+		-- wait until SN is connected so we know the PIN - FIXME
 		jnt:subscribe(meta)
 	end
 end
@@ -140,9 +135,6 @@ function notify_playerNew(meta, player)
 	jnt:unsubscribe(meta)
 
 	appletManager:callService("setupShowSelectPlayer", function() end)
-
-	appletManager:callService("forcePin", player)
-
 end
 
 

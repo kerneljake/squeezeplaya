@@ -25,12 +25,6 @@ local slimServer    = require("jive.slim.SlimServer")
 
 local appletManager = appletManager
 local jiveMain      = jiveMain
-local jnt           = jnt
-
-
--- HACK: this is bad, but we need to keep the meta in scope for the network
--- subscription to work
-local hackMeta = true
 
 
 module(...)
@@ -45,14 +39,13 @@ end
 function defaultSettings(meta)
 	return {
 		[ "setupDone" ] = false,
-		[ "registerDone" ] = false,
+		[ "registerDone" ] = true,
 	}
 end
 
 
 function registerApplet(meta)
 	meta:registerService("startSetup")
-	meta:registerService("startRegister")
 	meta:registerService("isSetupDone")
 end
 
@@ -63,63 +56,12 @@ function configureApplet(meta)
 	if not settings.setupDone then
 		appletManager:callService("startSetup")
 	end
-
-	if not settings.registerDone then
-		hackMeta = meta
-		jnt:subscribe(meta)
-	end
 end
 
 
 function notify_serverNew(meta, server)
 	local settings = meta:getSettings()
-
-	if settings.setupDone and server:isSqueezeNetwork() then
-		appletManager:callService("startRegister")
-
-		jnt:unsubscribe(meta)
-		hackMeta = nil
-	end
 end
-
-
---[[
-function notify_serverLinked(meta, server)
-	if not server:isSqueezeNetwork() then
-		return
-	end
-
-	log:info("server linked: ", server, " pin=", server:getPin())
-
-	local settings = meta:getSettings()
-	if server:getPin() == false then
-		settings.registerDone = true
-		meta:storeSettings()
-	end
-
-	if settings.registerDone then
-
-		-- for testing connect the player tosqueezenetwork
-		local player = appletManager:callService("getCurrentPlayer")
-		log:info(player, " is conencted to ", player and player:getSlimServer())
-
-		if player and not player:getSlimServer() then
-			local squeezenetwork = false
-			for name, server in slimServer:iterate() do
-				if server:isSqueezeNetwork() then
-					squeezenetwork = server
-				end
-			end
-
-			log:info("connecting ", player, " to ", squeezenetwork)
-			player:connectToServer(squeezenetwork)
-		end
-
-		jnt:unsubscribe(meta)
-		hackMeta = nil
-	end
-end
---]]
 
 
 --[[

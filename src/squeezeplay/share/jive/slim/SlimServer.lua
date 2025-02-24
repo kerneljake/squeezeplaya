@@ -861,9 +861,9 @@ function notify_cometHttpError(self, comet, cometRequest)
 end
 
 
--- Returns true if the server is SqueezeNetwork
+-- Always false since SqueezeNetwork is gone
 function isSqueezeNetwork(self)
-	return self.name == "mysqueezebox.com"
+	return false
 end
 
 
