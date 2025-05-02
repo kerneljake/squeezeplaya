@@ -27,6 +27,7 @@ I'm happy to fold this back upstream when it is sufficiently stable.
 - [x] memory leak fix in Quartz redraw
 - [x] ~~move volume slider quickly by clicking in the grey empty space area~~
 - [x] don't clobber VLC's output device on startup
+- [x] Right-to-Left language support
 - [ ] tray icon menu items for controlling playback
 - [ ] downsample high VBR FLAC streams to Bluetooth devices
 
