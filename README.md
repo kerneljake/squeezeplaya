@@ -29,7 +29,7 @@ I'm happy to fold this back upstream when it is sufficiently stable.
 - [x] don't clobber VLC's output device on startup
 - [x] Right-to-Left language support
 - [ ] tray icon menu items for controlling playback
-- [ ] downsample high VBR FLAC streams to Bluetooth devices
+- [x] ~downsample high VBR FLAC streams to Bluetooth devices~ ... workaround: `export USEPAMAXSAMPLERATE=44100`
 
 ## Compiling
 
