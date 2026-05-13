@@ -25,7 +25,7 @@ I'm happy to fold this back upstream when it is sufficiently stable.
 - [x] handle runtime changes in default output device like unplugging headphone jack, pairing Bluetooth headphones, changing MIDI Sound Output, etc.
 - [x] double click NowPlaying applet to rotate skin instead of single click
 - [x] memory leak fix in Quartz redraw
-- [x] ~~move volume slider quickly by clicking in the grey empty space area~~
+- [x] move volume slider quickly by clicking in the grey empty space area
 - [x] don't clobber VLC's output device on startup
 - [x] Right-to-Left language support
 - [ ] tray icon menu items for controlling playback
