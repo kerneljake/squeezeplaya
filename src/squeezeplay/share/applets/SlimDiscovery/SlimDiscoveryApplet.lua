@@ -277,13 +277,61 @@ function init(self, ...)
 	return self
 end
 
+function INFINITE_discover(self)
+    local addrs = {}
+
+    -- limited broadcast
+    addrs["255.255.255.255"] = true
+
+    log:debug("GOT HERE TOTO - Attempting C-binding execution")
+    
+    -- Wrap in a pcall to trap stack crashes, memory errors, or nil indexing safely
+    local status, broadcasts = pcall(jive.net.ifaces.broadcasts)
+    
+    if not status then
+        log:error("C-BINDING CRASHED: " .. tostring(broadcasts))
+        return -- Break the loop early so it doesn't spin endlessly
+    end
+
+    if type(broadcasts) == "table" then
+        log:debug("C-binding returned a valid table.")
+        for _, bcast in ipairs(broadcasts) do
+            addrs[bcast] = true
+        end
+    else
+        log:warn("C-binding executed safely but did not return a table type.")
+    end
+end
 
 function _discover(self)
-	-- Broadcast SqueezeCenter discovery
-	for i, address in pairs(self.poll) do
-		log:debug("sending slim discovery to ", address)
-		self.socket:send(_slimDiscoverySource, address, PORT)
-	end
+    if self.is_discovering then 
+        return 
+    end
+    self.is_discovering = true
+
+    local addrs = {}
+
+    -- limited broadcast
+    addrs["255.255.255.255"] = true
+
+    log:debug("GOT HERE TOTO")
+    local broadcasts = jive.net.ifaces.broadcasts()
+    if type(broadcasts) == "table" then
+        for _, bcast in ipairs(broadcasts) do
+            addrs[bcast] = true
+        end
+    end
+
+    -- user-configured poll entries (Remote Libraries)
+    for _, address in pairs(self.poll or {}) do
+        addrs[address] = true
+    end
+
+    -- send Slim discovery to every unique address
+    for address in pairs(addrs) do
+        log:debug("sending slim discovery to ", address)
+        self.socket:send(_slimDiscoverySource, address, PORT)
+    end
 
 	-- Discover players via udap or wireless scanning
 	-- UDAP discovery
@@ -314,17 +362,29 @@ function _discover(self)
 	_playerCleanup(self)
 
 
-	if self.state == 'probing_player' or self.state == 'probing_server' and
-		Framework:getTicks() > self.probeUntil then
+    log:debug("DEBUG STATE MACHINE - Current state: ", self.state, " Ticks: ", Framework:getTicks(), " ProbeUntil: ", self.probeUntil)
 
-		local currentPlayer = Player:getCurrentPlayer()
+    if (self.state == 'probing_player' or self.state == 'probing_server') and
+        Framework:getTicks() > self.probeUntil then
 
-		if currentPlayer and currentPlayer:isConnected() then
-			self:_setState('connected')
-		else
-			self:_setState('searching')
-		end
-	end
+        local currentPlayer = Player:getCurrentPlayer()
+        log:debug("DEBUG STATE MACHINE - Checking player connection: ", currentPlayer and currentPlayer:isConnected())
+
+        if currentPlayer and currentPlayer:isConnected() then
+            self:_setState('connected')
+        else
+            self:_setState('searching')
+        end
+    end
+
+    if self.state == 'connected' then
+        log:debug("DEBUG STATE MACHINE - Restarting timer with DISCOVERY_PERIOD: ", DISCOVERY_PERIOD)
+        self.timer:restart(DISCOVERY_PERIOD)
+    else
+        log:debug("DEBUG STATE MACHINE - Restarting timer with SEARCHING_PERIOD: ", SEARCHING_PERIOD)
+        self.timer:restart(SEARCHING_PERIOD)
+    end
+
 
 	if log:isDebug() then
 		self:_debug()
@@ -335,6 +395,9 @@ function _discover(self)
 	else
 		self.timer:restart(SEARCHING_PERIOD)
 	end
+
+    -- Clear the lock at the absolute end of execution
+    self.is_discovering = false
 end
 
 
