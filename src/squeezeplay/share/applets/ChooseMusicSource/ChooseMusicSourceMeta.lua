@@ -20,6 +20,8 @@ local oo            = require("loop.simple")
 
 local AppletMeta    = require("jive.AppletMeta")
 
+local jive_ifaces   = require("jive.ifaces")
+
 local appletManager = appletManager
 local jiveMain      = jiveMain
 local jnt           = jnt
@@ -36,7 +38,10 @@ end
 
 function defaultSettings(meta)
 	return {
-		poll = { ["255.255.255.255"] = "255.255.255.255" }
+		--poll = { ["255.255.255.255"] = "255.255.255.255" } -- no results
+		--poll = { ["255.255.255.255"] = "255.255.255.255", ["192.168.1.255"] = "192.168.1.255" } -- two results
+		poll = { ["192.168.1.255"] = "192.168.1.255" }
+		--poll = { ["192.168.1.55"] = "192.168.1.55" } -- cannot continue
 	}
 end
 
