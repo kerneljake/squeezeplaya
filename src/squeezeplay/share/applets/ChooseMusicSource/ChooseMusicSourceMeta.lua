@@ -21,11 +21,16 @@ local oo            = require("loop.simple")
 local AppletMeta    = require("jive.AppletMeta")
 
 local jive_ifaces   = require("jive.ifaces")
+local debug         = require("jive.utils.debug")
 
 local appletManager = appletManager
 local jiveMain      = jiveMain
 local jnt           = jnt
 local _player       = false
+
+local pairs			= pairs
+local type			= type
+local print			= print
 
 module(...)
 oo.class(_M, AppletMeta)
@@ -37,11 +42,24 @@ end
 
 
 function defaultSettings(meta)
+	local broadcasts = jive_ifaces.broadcasts()
+	local bcasts = {}
+
+	if type(broadcasts) == "table" then
+		for _, bcast in pairs(broadcasts) do
+			bcasts[bcast] = bcast
+		end
+	elseif type(broadcasts) == "string" then
+		bcasts[broadcasts] = broadcasts
+	end
+
+	print("DEBUG pairs:")
+	for i,v in pairs(bcasts) do
+		print(i,v)
+	end
+
 	return {
-		--poll = { ["255.255.255.255"] = "255.255.255.255" } -- no results
-		--poll = { ["255.255.255.255"] = "255.255.255.255", ["192.168.1.255"] = "192.168.1.255" } -- two results
-		poll = { ["192.168.1.255"] = "192.168.1.255" }
-		--poll = { ["192.168.1.55"] = "192.168.1.55" } -- cannot continue
+		poll = bcasts
 	}
 end
 
